@@ -156,18 +156,22 @@ if (GPT4ALL_TEST)
     set(TEST_MODEL_PATH "${CMAKE_BINARY_DIR}/resources/${TEST_MODEL}")
     set(TEST_MODEL_URL "https://huggingface.co/bartowski/Llama-3.2-1B-Instruct-GGUF/resolve/main/${TEST_MODEL}")
 
-    # Create a custom command to download the file if it does not exist or if the checksum does not match
-    add_custom_command(
-        OUTPUT "${TEST_MODEL_PATH}"
-        COMMAND ${CMAKE_COMMAND} -E echo "Downloading test model from ${TEST_MODEL_URL} ..."
-        COMMAND ${CMAKE_COMMAND} -DURL="${TEST_MODEL_URL}" -DOUTPUT_PATH="${TEST_MODEL_PATH}" -DEXPECTED_MD5="${TEST_MODEL_MD5}" -P "${CMAKE_SOURCE_DIR}/cmake/download_model.cmake"
-        DEPENDS "${CMAKE_SOURCE_DIR}/cmake/download_model.cmake"
-    )
+    if (EXISTS ${CMAKE_SOURCE_DIR}/${TEST_MODEL})
+        set(TEST_MODEL_PATH "${CMAKE_SOURCE_DIR}/${TEST_MODEL}")
+    else()
+        # Create a custom command to download the file if it does not exist or if the checksum does not match
+        add_custom_command(
+            OUTPUT "${TEST_MODEL_PATH}"
+            COMMAND ${CMAKE_COMMAND} -E echo "Downloading test model from ${TEST_MODEL_URL} ..."
+            COMMAND ${CMAKE_COMMAND} -DURL="${TEST_MODEL_URL}" -DOUTPUT_PATH="${TEST_MODEL_PATH}" -DEXPECTED_MD5="${TEST_MODEL_MD5}" -P "${CMAKE_SOURCE_DIR}/cmake/download_model.cmake"
+            DEPENDS "${CMAKE_SOURCE_DIR}/cmake/download_model.cmake"
+        )
 
-    # Define a custom target that depends on the downloaded model
-    add_custom_target(download_test_model
-        DEPENDS "${TEST_MODEL_PATH}"
-    )
+        # Define a custom target that depends on the downloaded model
+        add_custom_target(download_test_model
+            DEPENDS "${TEST_MODEL_PATH}"
+        )
+    endif()
 
     add_subdirectory(tests)
 
@@ -201,13 +205,19 @@ set(LOCAL_EMBEDDING_MODEL "nomic-embed-text-v1.5.f16.gguf")
 set(LOCAL_EMBEDDING_MODEL_MD5 "a5401e7f7e46ed9fcaed5b60a281d547")
 set(LOCAL_EMBEDDING_MODEL_PATH "${CMAKE_BINARY_DIR}/resources/${LOCAL_EMBEDDING_MODEL}")
 set(LOCAL_EMBEDDING_MODEL_URL "https://gpt4all.io/models/gguf/${LOCAL_EMBEDDING_MODEL}")
-message(STATUS "Downloading embedding model from ${LOCAL_EMBEDDING_MODEL_URL} ...")
-file(DOWNLOAD
-    "${LOCAL_EMBEDDING_MODEL_URL}"
-    "${LOCAL_EMBEDDING_MODEL_PATH}"
-    EXPECTED_HASH "MD5=${LOCAL_EMBEDDING_MODEL_MD5}"
-)
-message(STATUS "Embedding model downloaded to ${LOCAL_EMBEDDING_MODEL_PATH}")
+
+if (EXISTS ${CMAKE_SOURCE_DIR}/${LOCAL_EMBEDDING_MODEL})
+    set(LOCAL_EMBEDDING_MODEL_PATH "${CMAKE_SOURCE_DIR}/${LOCAL_EMBEDDING_MODEL}")
+else()
+    message(STATUS "Downloading embedding model from ${LOCAL_EMBEDDING_MODEL_URL} ...")
+    file(DOWNLOAD
+        "${LOCAL_EMBEDDING_MODEL_URL}"
+        "${LOCAL_EMBEDDING_MODEL_PATH}"
+        EXPECTED_HASH "MD5=${LOCAL_EMBEDDING_MODEL_MD5}"
+    )
+    message(STATUS "Embedding model downloaded to ${LOCAL_EMBEDDING_MODEL_PATH}")
+endif()
+
 if (APPLE)
     list(APPEND CHAT_EXE_RESOURCES "${LOCAL_EMBEDDING_MODEL_PATH}")
 endif()
@@ -537,8 +547,8 @@ if (LLMODEL_CUDA)
         TARGETS llamamodel-mainline-cuda
                 llamamodel-mainline-cuda-avxonly
         RUNTIME_DEPENDENCY_SET llama-cuda-deps
-        LIBRARY DESTINATION lib COMPONENT ${COMPONENT_NAME_MAIN}  # .so
-        RUNTIME DESTINATION lib COMPONENT ${COMPONENT_NAME_MAIN}  # .dll
+        LIBRARY DESTINATION ${GPT4ALL_LIB_DEST} COMPONENT ${COMPONENT_NAME_MAIN}  # .so
+        RUNTIME DESTINATION lib                 COMPONENT ${COMPONENT_NAME_MAIN}  # .dll
     )
     if (WIN32)
         install(
@@ -560,7 +570,11 @@ if (NOT GPT4ALL_USING_QTPDF)
     endif()
 endif()
 
-if (NOT APPLE)
+if (CMAKE_SYSTEM_NAME MATCHES Linux)
+    install(FILES "${LOCAL_EMBEDDING_MODEL_PATH}"
+            DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/${CMAKE_PROJECT_NAME}"
+            COMPONENT ${COMPONENT_NAME_MAIN})
+elseif (NOT CMAKE_SYSTEM_NAME MATCHES Darwin)
     install(FILES "${LOCAL_EMBEDDING_MODEL_PATH}"
             DESTINATION resources
             COMPONENT ${COMPONENT_NAME_MAIN})

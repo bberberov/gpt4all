@@ -76,8 +76,10 @@ bool EmbeddingLLMWorker::loadModel()
         return true;
     }
 
-#ifdef Q_OS_DARWIN
+#if defined(Q_OS_DARWIN)
     static const QString embPathFmt = u"%1/../Resources/%2"_s;
+#elif defined(Q_OS_LINUX)
+    static const QString embPathFmt = u"%1/../CMAKE_INSTALL_DATAROOTDIR/CMAKE_PROJECT_NAME/%2"_s;
 #else
     static const QString embPathFmt = u"%1/../resources/%2"_s;
 #endif
