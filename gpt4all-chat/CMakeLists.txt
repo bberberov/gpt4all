@@ -469,6 +469,8 @@ endif()
 
 if (APPLE)
     set(GPT4ALL_LIB_DEST bin/gpt4all.app/Contents/Frameworks)
+elseif (CMAKE_SYSTEM_NAME MATCHES Linux)
+    set(GPT4ALL_LIB_DEST ${CMAKE_INSTALL_LIBDIR})
 else()
     set(GPT4ALL_LIB_DEST lib)
 endif()
