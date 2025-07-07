@@ -389,10 +389,6 @@ qt_add_translations(chat
     ${CMAKE_SOURCE_DIR}/translations/gpt4all_pt_BR.ts
 )
 
-set_target_properties(chat PROPERTIES
-    WIN32_EXECUTABLE TRUE
-)
-
 macro(REPORT_MISSING_SIGNING_CONTEXT)
     message(FATAL_ERROR [=[
         Signing requested but no identity configured.
@@ -400,7 +396,7 @@ macro(REPORT_MISSING_SIGNING_CONTEXT)
         ]=])
 endmacro()
 
-if (APPLE)
+if (CMAKE_SYSTEM_NAME MATCHES Darwin)
     set_target_properties(chat PROPERTIES
         MACOSX_BUNDLE TRUE
         MACOSX_BUNDLE_GUI_IDENTIFIER gpt4all
@@ -409,6 +405,14 @@ if (APPLE)
         OUTPUT_NAME gpt4all
     )
     add_dependencies(chat ggml-metal)
+elseif (CMAKE_SYSTEM_NAME MATCHES Linux)
+    set_target_properties(chat PROPERTIES
+        OUTPUT_NAME gpt4all
+    )
+elseif (CMAKE_SYSTEM_NAME MATCHES Windows)
+    set_target_properties(chat PROPERTIES
+        WIN32_EXECUTABLE TRUE
+    )
 endif()
 
 if (APPLE AND GPT4ALL_SIGN_INSTALL)
